@@ -1,0 +1,689 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Finetune Tutorial &mdash; scLinguist 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=2389946f"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            scLinguist
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../credits.html">Credits</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">scLinguist</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Finetune Tutorial</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/finetune.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Finetune-Tutorial">
+<h1>Finetune Tutorial<a class="headerlink" href="#Finetune-Tutorial" title="Permalink to this heading"></a></h1>
+<p>This tutorial demonstrates how to finetune the scLinguist model on a custom dataset and then use it to predict protein expression from RNA data. (Basically, this task is similar to fewshot task.)</p>
+<p>Import necessary packages and define paths for checkpoints and save directory. You need to download the pretrained model and change the file path to your local path. The generated results will be saved in the SAVE_DIR.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;../../&#39;</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">scLinguist.data_loaders.data_loader</span> <span class="kn">import</span> <span class="n">scMultiDataset</span>
+<span class="kn">from</span> <span class="nn">scLinguist.model.configuration_hyena</span> <span class="kn">import</span> <span class="n">HyenaConfig</span>
+<span class="kn">from</span> <span class="nn">scLinguist.model.model</span> <span class="kn">import</span> <span class="n">scTrans</span>
+<span class="kn">from</span> <span class="nn">scLinguist.metrics</span> <span class="kn">import</span> <span class="n">PearsonCorr1d</span><span class="p">,</span> <span class="n">mmd_rbf</span>
+<span class="kn">import</span> <span class="nn">importlib</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s1">&#39;scLinguist.model&#39;</span><span class="p">)</span>
+
+<span class="n">ENCODER_CKPT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../pretrained_model/encoder.ckpt&quot;</span><span class="p">)</span>
+<span class="n">DECODER_CKPT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../pretrained_model/decoder.ckpt&quot;</span><span class="p">)</span>
+<span class="n">FINETUNE_CKPT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../pretrained_model/finetune.ckpt&quot;</span><span class="p">)</span>
+<span class="n">SAVE_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../docs/tutorials/finetune_output&quot;</span><span class="p">)</span>
+<span class="n">SAVE_DIR</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Configure dataloaders for fewshot and test datasets.</p>
+<p>First, inspect the data structure of the datasets to ensure they are compatible with the model.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="n">rna_train</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s1">&#39;../../data/train_sample_rna.h5ad&#39;</span><span class="p">)</span>
+<span class="n">rna_train</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[21]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AnnData object with n_obs × n_vars = 16994 × 19202
+    obs: &#39;orig.ident&#39;, &#39;nCount_RNA&#39;, &#39;nFeature_RNA&#39;, &#39;nCount_ADT&#39;, &#39;nFeature_ADT&#39;, &#39;lane&#39;, &#39;donor&#39;, &#39;celltype.l1&#39;, &#39;celltype.l2&#39;, &#39;RNA.weight&#39;, &#39;cell_type&#39;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">rna_train</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">todense</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[22]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+matrix([[ 0.,  0.,  0., ..., 15.,  1., 27.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  2.],
+        [ 0.,  0.,  0., ...,  2.,  0.,  7.],
+        ...,
+        [ 0.,  0.,  0., ...,  0.,  0.,  6.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  4.],
+        [ 0.,  0.,  0., ...,  1.,  0.,  6.]], dtype=float32)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="c1"># ensure the var_names are the same orders matched with the pretrained model</span>
+<span class="n">rna_train</span><span class="o">.</span><span class="n">var_names</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Index([&#39;ENSG00000186092&#39;, &#39;ENSG00000284733&#39;, &#39;ENSG00000284662&#39;,
+       &#39;ENSG00000187634&#39;, &#39;ENSG00000188976&#39;, &#39;ENSG00000187961&#39;,
+       &#39;ENSG00000187583&#39;, &#39;ENSG00000187642&#39;, &#39;ENSG00000188290&#39;,
+       &#39;ENSG00000187608&#39;,
+       ...
+       &#39;ENSG00000198712&#39;, &#39;ENSG00000228253&#39;, &#39;ENSG00000198899&#39;,
+       &#39;ENSG00000198938&#39;, &#39;ENSG00000198840&#39;, &#39;ENSG00000212907&#39;,
+       &#39;ENSG00000198886&#39;, &#39;ENSG00000198786&#39;, &#39;ENSG00000198695&#39;,
+       &#39;ENSG00000198727&#39;],
+      dtype=&#39;object&#39;, length=19202)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="n">rna_test</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s1">&#39;../../data/test_sample_rna.h5ad&#39;</span><span class="p">)</span>
+<span class="n">rna_test</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[24]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AnnData object with n_obs × n_vars = 10546 × 19202
+    obs: &#39;orig.ident&#39;, &#39;nCount_RNA&#39;, &#39;nFeature_RNA&#39;, &#39;nCount_ADT&#39;, &#39;nFeature_ADT&#39;, &#39;lane&#39;, &#39;donor&#39;, &#39;celltype.l1&#39;, &#39;celltype.l2&#39;, &#39;RNA.weight&#39;, &#39;cell_type&#39;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">rna_test</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">todense</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[25]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+matrix([[ 0.,  0.,  0., ...,  5.,  0.,  3.],
+        [ 0.,  0.,  0., ...,  0.,  0.,  7.],
+        [ 0.,  0.,  0., ...,  1.,  0.,  6.],
+        ...,
+        [ 0.,  0.,  0., ...,  1.,  0.,  2.],
+        [ 0.,  0.,  0., ...,  2.,  0.,  2.],
+        [ 0.,  0.,  0., ...,  4.,  0., 12.]], dtype=float32)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">rna_test</span><span class="o">.</span><span class="n">var_names</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[26]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Index([&#39;ENSG00000186092&#39;, &#39;ENSG00000284733&#39;, &#39;ENSG00000284662&#39;,
+       &#39;ENSG00000187634&#39;, &#39;ENSG00000188976&#39;, &#39;ENSG00000187961&#39;,
+       &#39;ENSG00000187583&#39;, &#39;ENSG00000187642&#39;, &#39;ENSG00000188290&#39;,
+       &#39;ENSG00000187608&#39;,
+       ...
+       &#39;ENSG00000198712&#39;, &#39;ENSG00000228253&#39;, &#39;ENSG00000198899&#39;,
+       &#39;ENSG00000198938&#39;, &#39;ENSG00000198840&#39;, &#39;ENSG00000212907&#39;,
+       &#39;ENSG00000198886&#39;, &#39;ENSG00000198786&#39;, &#39;ENSG00000198695&#39;,
+       &#39;ENSG00000198727&#39;],
+      dtype=&#39;object&#39;, length=19202)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="n">adt_train</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s1">&#39;../../data/train_sample_adt.h5ad&#39;</span><span class="p">)</span>
+<span class="n">adt_train</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[27]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AnnData object with n_obs × n_vars = 16994 × 6427
+    obs: &#39;orig.ident&#39;, &#39;nCount_RNA&#39;, &#39;nFeature_RNA&#39;, &#39;nCount_ADT&#39;, &#39;nFeature_ADT&#39;, &#39;lane&#39;, &#39;donor&#39;, &#39;celltype.l1&#39;, &#39;celltype.l2&#39;, &#39;RNA.weight&#39;, &#39;cell_type&#39;
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">numpy</span> <span class="k">as</span> <span class="nn">np</span>
+<span class="n">mask</span> <span class="o">=</span> <span class="o">~</span><span class="n">np</span><span class="o">.</span><span class="n">isnan</span><span class="p">(</span><span class="n">adt_train</span><span class="o">.</span><span class="n">X</span><span class="p">[</span><span class="mi">0</span><span class="p">]</span><span class="o">.</span><span class="n">toarray</span><span class="p">())</span>
+<span class="n">adt_train</span><span class="p">[:,</span> <span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">todense</span><span class="p">()</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[28]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+matrix([[1.100e+02, 1.400e+01, 4.900e+01, ..., 1.100e+01, 2.120e+02,
+         2.800e+01],
+        [1.200e+02, 1.000e+00, 5.890e+02, ..., 2.000e+00, 3.600e+01,
+         2.400e+01],
+        [6.450e+02, 5.000e+00, 1.256e+03, ..., 1.000e+00, 7.200e+01,
+         1.320e+02],
+        ...,
+        [2.330e+02, 2.700e+01, 8.420e+02, ..., 3.000e+00, 7.700e+01,
+         4.600e+01],
+        [3.120e+02, 1.500e+01, 1.079e+03, ..., 4.000e+00, 4.800e+01,
+         8.000e+01],
+        [1.960e+02, 2.000e+00, 1.910e+02, ..., 0.000e+00, 3.400e+01,
+         1.900e+01]])
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">adt_train</span><span class="o">.</span><span class="n">var_names</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[29]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+Index([&#39;SP110&#39;, &#39;GTPBA&#39;, &#39;SNX2&#39;, &#39;FRG1&#39;, &#39;TT21A&#39;, &#39;RHG18&#39;, &#39;AR&#39;, &#39;DOCK1&#39;,
+       &#39;RAB1A&#39;, &#39;MUC1.HMFG2&#39;,
+       ...
+       &#39;CYTSA&#39;, &#39;LFNG&#39;, &#39;PFKFB4&#39;, &#39;LIPB1&#39;, &#39;ZN225&#39;, &#39;TRI69&#39;, &#39;CCL14&#39;, &#39;ZN541&#39;,
+       &#39;TAP1&#39;, &#39;SCG3&#39;],
+      dtype=&#39;object&#39;, length=6427)
+</pre></div></div>
+</div>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="n">adt_test</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s1">&#39;../../data/test_sample_adt.h5ad&#39;</span><span class="p">)</span>
+<span class="n">adt_test</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[30]:
+</pre></div>
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+AnnData object with n_obs × n_vars = 10546 × 6427
+    obs: &#39;orig.ident&#39;, &#39;nCount_RNA&#39;, &#39;nFeature_RNA&#39;, &#39;nCount_ADT&#39;, &#39;nFeature_ADT&#39;, &#39;lane&#39;, &#39;donor&#39;, &#39;celltype.l1&#39;, &#39;celltype.l2&#39;, &#39;RNA.weight&#39;, &#39;cell_type&#39;
+</pre></div></div>
+</div>
+<p>Then, create the dataloaders for both finetune and test datasets. The <code class="docutils literal notranslate"><span class="pre">scMultiDataset</span></code> class is used to load the RNA and protein data from the specified paths.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[31]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">32</span>
+<span class="n">train_ds</span> <span class="o">=</span> <span class="n">scMultiDataset</span><span class="p">(</span>
+    <span class="n">data_dir_1</span><span class="o">=</span><span class="s2">&quot;../../data/train_sample_rna.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">data_dir_2</span><span class="o">=</span><span class="s2">&quot;../../data/train_sample_adt.h5ad&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">valid_ds</span> <span class="o">=</span> <span class="n">scMultiDataset</span><span class="p">(</span>
+    <span class="n">data_dir_1</span><span class="o">=</span><span class="s2">&quot;../../data/valid_sample_rna.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">data_dir_2</span><span class="o">=</span><span class="s2">&quot;../../data/valid_sample_adt.h5ad&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">test_ds</span> <span class="o">=</span> <span class="n">scMultiDataset</span><span class="p">(</span>
+    <span class="n">data_dir_1</span><span class="o">=</span><span class="s2">&quot;../../data/test_sample_rna.h5ad&quot;</span><span class="p">,</span>
+    <span class="n">data_dir_2</span><span class="o">=</span><span class="s2">&quot;../../data/test_sample_adt.h5ad&quot;</span><span class="p">,</span>
+<span class="p">)</span>
+
+<span class="n">train_dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
+    <span class="n">train_ds</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">num_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+    <span class="n">drop_last</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">valid_dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
+    <span class="n">valid_ds</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">num_workers</span><span class="o">=</span><span class="mi">8</span><span class="p">,</span>
+    <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">test_dataloader</span> <span class="o">=</span> <span class="n">DataLoader</span><span class="p">(</span>
+    <span class="n">test_ds</span><span class="p">,</span>
+    <span class="n">batch_size</span><span class="o">=</span><span class="n">BATCH_SIZE</span><span class="p">,</span>
+    <span class="n">shuffle</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">drop_last</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+    <span class="n">num_workers</span><span class="o">=</span><span class="mi">0</span><span class="p">,</span>
+    <span class="n">pin_memory</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span>
+<span class="p">)</span>
+<br/></pre></div>
+</div>
+</div>
+<p>Last, configure the model with the appropriate encoder and decoder checkpoints, and set the mode to “RNA-protein”. The <code class="docutils literal notranslate"><span class="pre">HyenaConfig</span></code> class is used to define the model configuration parameters such as <code class="docutils literal notranslate"><span class="pre">d_model</span></code>, <code class="docutils literal notranslate"><span class="pre">emb_dim</span></code>, <code class="docutils literal notranslate"><span class="pre">max_seq_len</span></code>, <code class="docutils literal notranslate"><span class="pre">vocab_len</span></code>, and <code class="docutils literal notranslate"><span class="pre">n_layer</span></code>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">enc_cfg</span> <span class="o">=</span> <span class="n">HyenaConfig</span><span class="p">(</span>
+    <span class="n">d_model</span>        <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">emb_dim</span>        <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">max_seq_len</span>    <span class="o">=</span> <span class="mi">19202</span><span class="p">,</span>
+    <span class="n">vocab_len</span>      <span class="o">=</span> <span class="mi">19202</span><span class="p">,</span>
+    <span class="n">n_layer</span>        <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">dec_cfg</span> <span class="o">=</span> <span class="n">HyenaConfig</span><span class="p">(</span>
+    <span class="n">d_model</span>        <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">emb_dim</span>        <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">max_seq_len</span>    <span class="o">=</span> <span class="mi">6427</span><span class="p">,</span>
+    <span class="n">vocab_len</span>      <span class="o">=</span> <span class="mi">6427</span><span class="p">,</span>
+    <span class="n">n_layer</span>        <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">scTrans</span><span class="p">(</span>
+        <span class="n">enc_cfg</span><span class="p">,</span>
+        <span class="n">dec_cfg</span><span class="p">,</span>
+        <span class="n">encoder_ckpt_path</span><span class="o">=</span><span class="n">ENCODER_CKPT</span><span class="p">,</span>
+        <span class="n">decoder_ckpt_path</span><span class="o">=</span><span class="n">DECODER_CKPT</span><span class="p">,</span>
+        <span class="n">lr</span><span class="o">=</span><span class="mf">0.001</span><span class="p">,</span>
+        <span class="n">mask_prob</span><span class="o">=</span><span class="mf">0.6</span>
+    <span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">scTrans</span><span class="o">.</span><span class="n">load_from_checkpoint</span><span class="p">(</span><span class="n">checkpoint_path</span><span class="o">=</span><span class="n">FINETUNE_CKPT</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;RNA-protein&quot;</span>
+</pre></div>
+</div>
+</div>
+<p>Start training the model using PyTorch Lightning. The <code class="docutils literal notranslate"><span class="pre">ModelCheckpoint</span></code> callback is used to save the best model based on validation loss, and the <code class="docutils literal notranslate"><span class="pre">EarlyStopping</span></code> callback is used to stop training if the validation loss does not improve for a specified number of epochs.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">pytorch_lightning</span> <span class="k">as</span> <span class="nn">pl</span>
+<span class="kn">from</span> <span class="nn">pytorch_lightning.callbacks</span> <span class="kn">import</span> <span class="n">ModelCheckpoint</span>
+
+<span class="n">ckpt_cb</span> <span class="o">=</span> <span class="n">ModelCheckpoint</span><span class="p">(</span>
+    <span class="n">dirpath</span>      <span class="o">=</span> <span class="n">SAVE_DIR</span><span class="o">/</span><span class="s2">&quot;ckpt&quot;</span><span class="p">,</span>
+    <span class="n">monitor</span>      <span class="o">=</span> <span class="s2">&quot;valid_loss_epoch&quot;</span><span class="p">,</span>
+    <span class="n">mode</span>         <span class="o">=</span> <span class="s2">&quot;min&quot;</span><span class="p">,</span>
+    <span class="n">save_top_k</span>   <span class="o">=</span> <span class="mi">10</span><span class="p">,</span>
+    <span class="n">filename</span>     <span class="o">=</span> <span class="s2">&quot;best-</span><span class="si">{epoch}</span><span class="s2">-</span><span class="si">{valid_loss_epoch:.4f}</span><span class="s2">&quot;</span><span class="p">,</span>
+    <span class="n">save_last</span> <span class="o">=</span> <span class="kc">True</span>
+<span class="p">)</span>
+
+<span class="n">trainer</span> <span class="o">=</span> <span class="n">pl</span><span class="o">.</span><span class="n">Trainer</span><span class="p">(</span>
+    <span class="n">accelerator</span>       <span class="o">=</span> <span class="s2">&quot;gpu&quot;</span><span class="p">,</span>
+    <span class="n">devices</span>           <span class="o">=</span> <span class="p">[</span><span class="mi">1</span><span class="p">],</span>
+    <span class="n">max_epochs</span>        <span class="o">=</span> <span class="mi">6</span><span class="p">,</span>
+    <span class="n">log_every_n_steps</span> <span class="o">=</span> <span class="mi">50</span><span class="p">,</span>
+    <span class="n">callbacks</span>         <span class="o">=</span> <span class="p">[</span><span class="n">ckpt_cb</span><span class="p">],</span>
+<span class="p">)</span>
+
+<span class="n">trainer</span><span class="o">.</span><span class="n">fit</span><span class="p">(</span><span class="n">model</span><span class="p">,</span> <span class="n">train_dataloader</span><span class="p">,</span> <span class="n">valid_dataloader</span><span class="p">)</span>
+<span class="n">best_ckpt</span> <span class="o">=</span> <span class="n">ckpt_cb</span><span class="o">.</span><span class="n">best_model_path</span>
+<br/></pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+GPU available: True, used: True
+TPU available: False, using: 0 TPU cores
+IPU available: False, using: 0 IPUs
+LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0,1]
+
+  | Name       | Type             | Params
+------------------------------------------------
+0 | encoder    | scHeyna_enc      | 313 K
+1 | decoder    | scHeyna_dec      | 249 K
+2 | translator | MLPTranslator    | 284 M
+3 | cos_gene   | CosineSimilarity | 0
+4 | cos_cell   | CosineSimilarity | 0
+------------------------------------------------
+285 M     Trainable params
+0         Non-trainable params
+285 M     Total params
+1,141.275 Total estimated model params size (MB)
+/home/miaozy/miniconda3/envs/scgpt/lib/python3.8/site-packages/pytorch_lightning/callbacks/model_checkpoint.py:631: UserWarning: Checkpoint directory ../../docs/tutorials/finetune_output/ckpt exists and is not empty.
+  rank_zero_warn(f&#34;Checkpoint directory {dirpath} exists and is not empty.&#34;)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "7d9045b1cb884f52b61f651dad92a6a8", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "fba741850a994c8d8972d10332bcbba7", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "d20cd796f2b147549331e85be7676eb4", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "ddcb4575721e49e2873921bddfe39ff6", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "44619c496bbf4f4db96cd3701038cffd", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "c907c61305bc4a28b7d62b29d37cbfbf", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "1536916cfa31458eafd21150e71d012b", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<script type="application/vnd.jupyter.widget-view+json">{"model_id": "af100e1a3ee148ceaf1930675c005bd5", "version_major": 2, "version_minor": 0}</script></div>
+</div>
+<p>Inference with the trained model on the test dataset. Use RNA data to predict proteins in ../../docs/tutorials/protein_names.txt, here we use all proteins in the test data.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[34]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">test_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;../../data/test_sample_rna.h5ad&quot;</span><span class="p">)</span>
+
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">normalize_total</span><span class="p">(</span><span class="n">test_adata</span><span class="p">,</span> <span class="n">target_sum</span><span class="o">=</span><span class="mi">10000</span><span class="p">)</span>
+<span class="n">sc</span><span class="o">.</span><span class="n">pp</span><span class="o">.</span><span class="n">log1p</span><span class="p">(</span><span class="n">test_adata</span><span class="p">)</span>
+
+<span class="n">rna_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">test_adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">todense</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+<span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+
+<span class="n">BATCH_SIZE</span> <span class="o">=</span> <span class="mi">16</span>
+<span class="n">pred_chunks</span> <span class="o">=</span> <span class="p">[]</span>
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">X</span> <span class="o">=</span> <span class="n">rna_tensor</span>
+    <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">X</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="mi">0</span><span class="p">],</span> <span class="n">BATCH_SIZE</span><span class="p">):</span>
+        <span class="n">xb</span> <span class="o">=</span> <span class="n">X</span><span class="p">[</span><span class="n">i</span><span class="p">:</span><span class="n">i</span><span class="o">+</span><span class="n">BATCH_SIZE</span><span class="p">]</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="s2">&quot;cuda&quot;</span><span class="p">,</span> <span class="n">non_blocking</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+        <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">pred_b</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">xb</span><span class="p">)</span>
+        <span class="n">pred_chunks</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="n">pred_b</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">())</span>
+        <span class="k">del</span> <span class="n">xb</span><span class="p">,</span> <span class="n">pred_b</span>
+<span class="n">protein_pred</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">cat</span><span class="p">(</span><span class="n">pred_chunks</span><span class="p">,</span> <span class="n">dim</span><span class="o">=</span><span class="mi">0</span><span class="p">)</span>
+
+<span class="c1"># predict given proteins</span>
+<span class="n">target_proteins</span> <span class="o">=</span> <span class="n">adt_test</span><span class="p">[:,</span> <span class="n">mask</span><span class="p">]</span><span class="o">.</span><span class="n">var_names</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
+<span class="n">prot_map</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../../docs/tutorials/protein_index_map.csv&quot;</span><span class="p">)</span>
+<span class="n">name_to_idx</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">prot_map</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">prot_map</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">]))</span>
+<span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">name_to_idx</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">target_proteins</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">name_to_idx</span><span class="p">]</span>
+
+<span class="n">pred_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="n">protein_pred</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="n">target_proteins</span><span class="p">,</span>
+    <span class="n">index</span>   <span class="o">=</span> <span class="n">test_adata</span><span class="o">.</span><span class="n">obs_names</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">pred_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">SAVE_DIR</span><span class="o">/</span><span class="s2">&quot;predicted_protein_expression.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Finally, we evaluate scLinguist with Pearson and MMD, then visualize the protein expression pattern to demonstrate scLinguist’s ability to recover celltype-specific patterns.</p>
+<div class="nbinput docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[ ]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">adt_real</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;../../data/test_sample_adt.h5ad&quot;</span><span class="p">)</span>
+<span class="n">adt_sub</span> <span class="o">=</span> <span class="n">adt_real</span><span class="p">[:,</span> <span class="n">target_proteins</span><span class="p">]</span>
+<span class="n">Y_np</span> <span class="o">=</span> <span class="n">adt_sub</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">toarray</span><span class="p">()</span> <span class="k">if</span> <span class="nb">hasattr</span><span class="p">(</span><span class="n">adt_sub</span><span class="o">.</span><span class="n">X</span><span class="p">,</span> <span class="s2">&quot;toarray&quot;</span><span class="p">)</span> <span class="k">else</span> <span class="n">np</span><span class="o">.</span><span class="n">asarray</span><span class="p">(</span><span class="n">adt_sub</span><span class="o">.</span><span class="n">X</span><span class="p">)</span>
+
+<span class="c1"># protein preprocessing</span>
+<span class="kn">from</span> <span class="nn">scLinguist.data_loaders.data_loader</span> <span class="kn">import</span> <span class="n">max_min_normalization_with_nan</span>
+<span class="n">Y_np</span> <span class="o">=</span> <span class="n">max_min_normalization_with_nan</span><span class="p">(</span><span class="n">Y_np</span><span class="p">)</span>
+
+<span class="n">Y_true</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">Y_np</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+<span class="n">Y_pred</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">from_numpy</span><span class="p">(</span><span class="n">pred_df</span><span class="o">.</span><span class="n">values</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span>
+
+<span class="n">overall_pearson</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">PearsonCorr1d</span><span class="p">(</span><span class="n">Y_true</span><span class="o">.</span><span class="n">flatten</span><span class="p">(),</span> <span class="n">Y_pred</span><span class="o">.</span><span class="n">flatten</span><span class="p">())</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+
+
+<span class="n">mmd_raw</span> <span class="o">=</span> <span class="nb">float</span><span class="p">(</span><span class="n">mmd_rbf</span><span class="p">(</span><span class="n">Y_true</span><span class="p">,</span> <span class="n">Y_pred</span><span class="p">)</span><span class="o">.</span><span class="n">detach</span><span class="p">()</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">item</span><span class="p">())</span>
+<span class="n">summary</span> <span class="o">=</span> <span class="p">{</span>
+    <span class="s2">&quot;pearson&quot;</span><span class="p">:</span> <span class="n">overall_pearson</span><span class="p">,</span>
+    <span class="s2">&quot;mmd_raw&quot;</span><span class="p">:</span> <span class="n">mmd_raw</span>
+<span class="p">}</span>
+<span class="nb">print</span><span class="p">(</span><span class="s2">&quot;[Metrics]&quot;</span><span class="p">,</span> <span class="n">summary</span><span class="p">)</span>
+
+<span class="kn">from</span> <span class="nn">scLinguist.data_loaders.data_loader</span> <span class="kn">import</span> <span class="n">max_min_normalization_with_nan</span>
+<span class="kn">import</span> <span class="nn">anndata</span> <span class="k">as</span> <span class="nn">ad</span>
+<span class="kn">from</span> <span class="nn">scipy.sparse</span> <span class="kn">import</span> <span class="n">csr_matrix</span>
+<span class="n">true_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">adt_sub</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">toarray</span><span class="p">())</span>
+<span class="n">_true</span> <span class="o">=</span> <span class="n">true_df</span>
+<span class="n">_pred</span> <span class="o">=</span> <span class="n">pred_df</span>
+
+<span class="n">adata_true</span>  <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">_true</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
+                        <span class="n">obs</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">_true</span><span class="o">.</span><span class="n">index</span><span class="p">),</span>
+                        <span class="n">var</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">_true</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
+<span class="n">adata_recon</span> <span class="o">=</span> <span class="n">ad</span><span class="o">.</span><span class="n">AnnData</span><span class="p">(</span><span class="n">csr_matrix</span><span class="p">(</span><span class="n">_pred</span><span class="o">.</span><span class="n">values</span><span class="p">),</span>
+                        <span class="n">obs</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">_pred</span><span class="o">.</span><span class="n">index</span><span class="p">),</span>
+                        <span class="n">var</span><span class="o">=</span><span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span><span class="n">index</span><span class="o">=</span><span class="n">_pred</span><span class="o">.</span><span class="n">columns</span><span class="p">))</span>
+<span class="n">adata_true</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">adt_sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">adata_recon</span><span class="o">.</span><span class="n">obs</span> <span class="o">=</span> <span class="n">adt_sub</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">_group_col</span> <span class="o">=</span> <span class="s2">&quot;celltype.l2&quot;</span>
+
+<span class="n">adata_true</span><span class="o">.</span><span class="n">X</span>  <span class="o">=</span> <span class="n">max_min_normalization_with_nan</span><span class="p">(</span><span class="n">adata_true</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">toarray</span><span class="p">())</span>
+
+<span class="n">adata_true</span><span class="o">.</span><span class="n">var_names_make_unique</span><span class="p">()</span>
+<span class="n">adata_recon</span><span class="o">.</span><span class="n">var_names_make_unique</span><span class="p">()</span>
+<span class="n">adata_true</span><span class="o">.</span><span class="n">raw</span>  <span class="o">=</span> <span class="n">adata_true</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+<span class="n">adata_recon</span><span class="o">.</span><span class="n">raw</span> <span class="o">=</span> <span class="n">adata_recon</span><span class="o">.</span><span class="n">copy</span><span class="p">()</span>
+
+<span class="n">sc</span><span class="o">.</span><span class="n">set_figure_params</span><span class="p">(</span><span class="n">scanpy</span><span class="o">=</span><span class="kc">True</span><span class="p">,</span> <span class="n">fontsize</span><span class="o">=</span><span class="mi">15</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">20</span><span class="p">,</span> <span class="mi">20</span><span class="p">),</span> <span class="n">dpi</span><span class="o">=</span><span class="mi">150</span><span class="p">)</span>
+<span class="k">if</span> <span class="n">_group_col</span> <span class="ow">in</span> <span class="n">adata_true</span><span class="o">.</span><span class="n">obs</span><span class="o">.</span><span class="n">columns</span><span class="p">:</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">adata_true</span><span class="p">,</span>  <span class="n">adata_true</span><span class="o">.</span><span class="n">var_names</span><span class="p">,</span>  <span class="n">groupby</span><span class="o">=</span><span class="n">_group_col</span><span class="p">,</span>
+                <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">adata_recon</span><span class="p">,</span> <span class="n">adata_recon</span><span class="o">.</span><span class="n">var_names</span><span class="p">,</span> <span class="n">groupby</span><span class="o">=</span><span class="n">_group_col</span><span class="p">,</span>
+                <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+<span class="k">else</span><span class="p">:</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">adata_true</span><span class="p">,</span>  <span class="n">adata_true</span><span class="o">.</span><span class="n">var_names</span><span class="p">,</span>
+                <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+    <span class="n">sc</span><span class="o">.</span><span class="n">pl</span><span class="o">.</span><span class="n">heatmap</span><span class="p">(</span><span class="n">adata_recon</span><span class="p">,</span> <span class="n">adata_recon</span><span class="o">.</span><span class="n">var_names</span><span class="p">,</span>
+                <span class="n">cmap</span><span class="o">=</span><span class="s1">&#39;viridis&#39;</span><span class="p">,</span> <span class="n">figsize</span><span class="o">=</span><span class="p">(</span><span class="mi">10</span><span class="p">,</span> <span class="mi">10</span><span class="p">),</span> <span class="n">show</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<div class="highlight"><pre>
+[Metrics] {&#39;pearson&#39;: 0.9226795434951782, &#39;mmd_raw&#39;: 0.072367824614048}
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area stderr docutils container">
+<div class="highlight"><pre>
+/home/miaozy/miniconda3/envs/scgpt/lib/python3.8/site-packages/anndata/_core/anndata.py:121: ImplicitModificationWarning: Transforming to str index.
+  warnings.warn(&#34;Transforming to str index.&#34;, ImplicitModificationWarning)
+/home/miaozy/miniconda3/envs/scgpt/lib/python3.8/site-packages/anndata/_core/anndata.py:121: ImplicitModificationWarning: Transforming to str index.
+  warnings.warn(&#34;Transforming to str index.&#34;, ImplicitModificationWarning)
+</pre></div></div>
+</div>
+<div class="nboutput docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_finetune_24_2.png" class="no-scaled-link" src="../_images/tutorials_finetune_24_2.png" style="width: 1518px; height: 1210px;" />
+</div>
+</div>
+<div class="nboutput nblast docutils container">
+<div class="prompt empty docutils container">
+</div>
+<div class="output_area docutils container">
+<img alt="../_images/tutorials_finetune_24_3.png" class="no-scaled-link" src="../_images/tutorials_finetune_24_3.png" style="width: 1518px; height: 1286px;" />
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Min Li Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
