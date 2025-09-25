@@ -25,7 +25,7 @@ python setup.py install
 * [`zeroshot`](./integration_examples/vertical) 
 * [`fewshot`](./integration_examples/mosaic) 
 * [`imputation `](./imputation_examples/)  -->
-We provided detailed tutorials on applying scLinguist to various tasks. Please refer to [https://scLinguist.readthedocs.io/en/latest/](https://scLinguist.readthedocs.io/en/latest/).
+We provided detailed tutorials on applying scLinguist to various tasks. Please refer to [https://scLinguist.readthedocs.io/en/latest/](https://sclinguist.readthedocs.io/en/stable/).
 
 ## Pre-trained model 
 The pre-trained models can be downloaded from these links.
