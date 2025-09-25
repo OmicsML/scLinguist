@@ -26,6 +26,6 @@ logger.propagate = False
 
 _all_ = ["scTrans", "HyenaConfig", "scMultiDataset", "paProteinDataset", 
          "paTESTProteinDataset_citeseq", "scRNADataset", "spRNADataset",
-           "spMultiDataset", "scMultiDataset"]
+           "spMultiDataset", "scMultiDataset", "PearsonCorr1d", "mmd_rbf"]
 
 # _version_ = version("scLinguist")

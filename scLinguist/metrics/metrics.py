@@ -1,4 +1,13 @@
 import torch
+
+def PearsonCorr1d(y_true, y_pred):
+    assert len(y_true.shape) == 1
+    y_true_c = y_true - torch.mean(y_true)
+    y_pred_c = y_pred - torch.mean(y_pred)
+    pearson = torch.mean(torch.sum(y_true_c * y_pred_c) / (torch.sqrt(torch.sum(y_true_c * y_true_c)) + 1e-8)
+                        / (torch.sqrt(torch.sum(y_pred_c * y_pred_c)) + 1e-8))
+    return pearson
+
 def gaussian_kernel(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
     """
     Compute the multi-scale Gaussian RBF kernel matrix between source and target.
@@ -31,9 +40,6 @@ def gaussian_kernel(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None
         L2_dis.append(diff.sum(2).cpu())
     L2_distance = torch.concatenate(L2_dis, dim=0)
 
-    # Alternative full-matrix computation (may cause OOM)
-    # L2_distance = ((total0 - total1) ** 2).sum(2)
-
     # Compute bandwidth(s)
     if fix_sigma:
         bandwidth = fix_sigma
@@ -48,13 +54,13 @@ def gaussian_kernel(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None
     return sum(kernel_val)
 
 
-def mmd_rbf(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
+def mmd_rbf(y_true, y_pred, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
     """
-    Compute the Maximum Mean Discrepancy (MMD) between source and target using RBF kernel.
+    Compute the Maximum Mean Discrepancy (MMD) between y_true and target using RBF kernel.
 
     Args:
-        source (Tensor): Source domain data of shape (n_samples, features)
-        target (Tensor): Target domain data of shape (n_samples, features)
+        y_true (Tensor): y_true data of shape (n_samples, features)
+        y_pred (Tensor): y_pred domain data of shape (n_samples, features)
         kernel_mul (float): Multiplier to scale the kernel bandwidth
         kernel_num (int): Number of RBF kernels used for multi-scale MMD
         fix_sigma (float, optional): Fixed bandwidth value
@@ -62,8 +68,8 @@ def mmd_rbf(source, target, kernel_mul=2.0, kernel_num=5, fix_sigma=None):
     Returns:
         Tensor: Scalar MMD loss value
     """
-    batch_size = source.size(0)
-    kernels = gaussian_kernel(source, target,
+    batch_size = y_true.size(0)
+    kernels = gaussian_kernel(y_true, y_pred,
                               kernel_mul=kernel_mul,
                               kernel_num=kernel_num,
                               fix_sigma=fix_sigma)
