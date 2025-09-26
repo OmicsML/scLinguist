@@ -13,7 +13,7 @@ Clone the repository and install the requirements:
 
 .. code-block:: bash
 
-   git clone https://github.com/
+   git clone https://github.com/OmicsML/scLinguist
    cd scLinguist
    pip install -r requirements.txt
 
