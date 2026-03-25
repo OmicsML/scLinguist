@@ -840,3 +840,46 @@ def align_and_merge_with_order(rna: anndata.AnnData, order: list) -> anndata.Ann
     rna = rna[1:, dummy.var_names]
 
     return rna
+
+
+
+def expand_protein_to_panel(pro: anndata.AnnData, panel: list, id_col: str = "feature_id") -> anndata.AnnData:
+    """
+    Expand the protein AnnData `pro` to a predefined protein panel (e.g., 6427).
+
+    This function:
+    - Uses `pro.var[id_col]` as the protein identifier if present; otherwise falls back to `var_names`.
+    - Filters proteins to keep only those in the target `panel`.
+    - Adds missing proteins as all-0 dummy columns to preserve column alignment.
+    - Reorders columns to match the exact `panel` order.
+    """
+    # If the id column exists, adopt it as var_names
+    if id_col in pro.var.columns:
+        # Drop features with invalid IDs
+        valid = ~pro.var[id_col].isna()
+        pro = pro[:, valid].copy()
+        pro.var_names = pro.var[id_col].astype(str).values
+
+    # Create a dummy row to enforce inclusion of all proteins in `panel`
+    dummy = anndata.AnnData(X=np.zeros((1, len(panel))))
+    dummy.var_names = list(panel)
+    dummy.obs_names = ["__dummy__"]
+
+    # Keep only proteins that appear in both `pro` and `panel`
+    valid_proteins = list(set(panel) & set(pro.var_names))
+    pro = pro[:, valid_proteins].copy()
+
+    # Concatenate dummy row and real data to ensure all proteins in `panel` are present
+    pro = sc.concat([dummy, pro], axis=0, join="outer")
+
+    # Drop the dummy row and reorder columns according to `panel`
+    pro = pro[1:, dummy.var_names]
+
+    # Ensure sparse storage (optional)
+    if not hasattr(pro.X, "tocsr"):
+        pro.X = csr_matrix(pro.X)
+
+    # Keep an explicit feature_id column for traceability
+    pro.var["feature_id"] = pro.var_names
+
+    return pro

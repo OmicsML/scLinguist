@@ -1,0 +1,202 @@
+
+
+<!DOCTYPE html>
+<html class="writer-html5" lang="en">
+<head>
+  <meta charset="utf-8" /><meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imputation Tutorial &mdash; scLinguist 0.1.0 documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=92fd9be5" />
+      <link rel="stylesheet" type="text/css" href="../_static/css/theme.css?v=e59714d7" />
+      <link rel="stylesheet" type="text/css" href="../_static/nbsphinx-code-cells.css?v=2aa19091" />
+      <link rel="stylesheet" type="text/css" href="../_static/custom.css" />
+
+  
+      <script src="../_static/jquery.js?v=5d32c60e"></script>
+      <script src="../_static/_sphinx_javascript_frameworks_compat.js?v=2cd50e6c"></script>
+      <script data-url_root="../" id="documentation_options" src="../_static/documentation_options.js?v=2389946f"></script>
+      <script src="../_static/doctools.js?v=888ff710"></script>
+      <script src="../_static/sphinx_highlight.js?v=4825356b"></script>
+      <script crossorigin="anonymous" integrity="sha256-Ae2Vz/4ePdIu6ZyI/5ZGsYnb+m0JlOmKPjt6XZ9JJkA=" src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.4/require.min.js"></script>
+      <script>window.MathJax = {"tex": {"inlineMath": [["$", "$"], ["\\(", "\\)"]], "processEscapes": true}, "options": {"ignoreHtmlClass": "tex2jax_ignore|mathjax_ignore|document", "processHtmlClass": "tex2jax_process|mathjax_process|math|output_area"}}</script>
+      <script defer="defer" src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <script src="../_static/js/theme.js"></script>
+    <link rel="index" title="Index" href="../genindex.html" />
+    <link rel="search" title="Search" href="../search.html" /> 
+</head>
+
+<body class="wy-body-for-nav"> 
+  <div class="wy-grid-for-nav">
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search" >
+
+          
+          
+          <a href="../index.html" class="icon icon-home">
+            scLinguist
+          </a>
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" aria-label="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+        </div><div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="Navigation menu">
+              <p class="caption" role="heading"><span class="caption-text">Contents:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../install.html">Installation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="index.html">Tutorials</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../credits.html">Credits</a></li>
+</ul>
+
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap"><nav class="wy-nav-top" aria-label="Mobile navigation menu" >
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../index.html">scLinguist</a>
+      </nav>
+
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="Page navigation">
+  <ul class="wy-breadcrumbs">
+      <li><a href="../index.html" class="icon icon-home" aria-label="Home"></a></li>
+      <li class="breadcrumb-item active">Imputation Tutorial</li>
+      <li class="wy-breadcrumbs-aside">
+            <a href="../_sources/tutorials/imputation.ipynb.txt" rel="nofollow"> View page source</a>
+      </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+             
+  <section id="Imputation-Tutorial">
+<h1>Imputation Tutorial<a class="headerlink" href="#Imputation-Tutorial" title="Permalink to this heading"></a></h1>
+<p>This tutorial demonstrates how to use <strong>finetuned</strong> scLinguist model to impute protein expression from RNA data.</p>
+<p>Import necessary packages and define paths for checkpoints and save directory.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[1]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">from</span> <span class="nn">pathlib</span> <span class="kn">import</span> <span class="n">Path</span>
+<span class="kn">from</span> <span class="nn">torch.utils.data</span> <span class="kn">import</span> <span class="n">DataLoader</span>
+<span class="kn">import</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">append</span><span class="p">(</span><span class="s1">&#39;../../&#39;</span><span class="p">)</span>
+<span class="kn">from</span> <span class="nn">scLinguist.data_loaders.data_loader</span> <span class="kn">import</span> <span class="n">scMultiDataset</span>
+<span class="kn">from</span> <span class="nn">scLinguist.model.configuration_hyena</span> <span class="kn">import</span> <span class="n">HyenaConfig</span>
+<span class="kn">from</span> <span class="nn">scLinguist.model.model</span> <span class="kn">import</span> <span class="n">scTrans</span>
+<span class="kn">import</span> <span class="nn">importlib</span><span class="o">,</span> <span class="nn">sys</span>
+<span class="n">sys</span><span class="o">.</span><span class="n">modules</span><span class="p">[</span><span class="s1">&#39;model&#39;</span><span class="p">]</span> <span class="o">=</span> <span class="n">importlib</span><span class="o">.</span><span class="n">import_module</span><span class="p">(</span><span class="s1">&#39;scLinguist.model&#39;</span><span class="p">)</span>
+
+<span class="n">ENCODER_CKPT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../pretrained_model/encoder.ckpt&quot;</span><span class="p">)</span>
+<span class="n">DECODER_CKPT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../pretrained_model/decoder.ckpt&quot;</span><span class="p">)</span>
+<span class="n">FINETUNE_CKPT</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../pretrained_model/finetune.ckpt&quot;</span><span class="p">)</span>
+<span class="n">SAVE_DIR</span> <span class="o">=</span> <span class="n">Path</span><span class="p">(</span><span class="s2">&quot;../../docs/tutorials/finetune_output&quot;</span><span class="p">)</span>
+<span class="n">SAVE_DIR</span><span class="o">.</span><span class="n">mkdir</span><span class="p">(</span><span class="n">exist_ok</span><span class="o">=</span><span class="kc">True</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+<p>Configure the model with the appropriate encoder and decoder checkpoints, and set the mode to “RNA-protein”. The <code class="docutils literal notranslate"><span class="pre">HyenaConfig</span></code> class is used to define the model configuration parameters such as <code class="docutils literal notranslate"><span class="pre">d_model</span></code>, <code class="docutils literal notranslate"><span class="pre">emb_dim</span></code>, <code class="docutils literal notranslate"><span class="pre">max_seq_len</span></code>, <code class="docutils literal notranslate"><span class="pre">vocab_len</span></code>, and <code class="docutils literal notranslate"><span class="pre">n_layer</span></code>.</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[3]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="n">enc_cfg</span> <span class="o">=</span> <span class="n">HyenaConfig</span><span class="p">(</span>
+    <span class="n">d_model</span>        <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">emb_dim</span>        <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">max_seq_len</span>    <span class="o">=</span> <span class="mi">19202</span><span class="p">,</span>
+    <span class="n">vocab_len</span>      <span class="o">=</span> <span class="mi">19202</span><span class="p">,</span>
+    <span class="n">n_layer</span>        <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">dec_cfg</span> <span class="o">=</span> <span class="n">HyenaConfig</span><span class="p">(</span>
+    <span class="n">d_model</span>        <span class="o">=</span> <span class="mi">128</span><span class="p">,</span>
+    <span class="n">emb_dim</span>        <span class="o">=</span> <span class="mi">5</span><span class="p">,</span>
+    <span class="n">max_seq_len</span>    <span class="o">=</span> <span class="mi">6427</span><span class="p">,</span>
+    <span class="n">vocab_len</span>      <span class="o">=</span> <span class="mi">6427</span><span class="p">,</span>
+    <span class="n">n_layer</span>        <span class="o">=</span> <span class="mi">1</span><span class="p">,</span>
+    <span class="n">output_hidden_states</span><span class="o">=</span><span class="kc">False</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">model</span> <span class="o">=</span> <span class="n">scTrans</span><span class="o">.</span><span class="n">load_from_checkpoint</span><span class="p">(</span><span class="n">checkpoint_path</span><span class="o">=</span><span class="n">FINETUNE_CKPT</span><span class="p">)</span>
+<span class="n">model</span><span class="o">.</span><span class="n">encoder_ckpt_path</span> <span class="o">=</span> <span class="n">ENCODER_CKPT</span>
+<span class="n">model</span><span class="o">.</span><span class="n">decoder_ckpt_path</span> <span class="o">=</span> <span class="n">DECODER_CKPT</span>
+<span class="n">model</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;RNA-protein&quot;</span>
+</pre></div>
+</div>
+</div>
+<p>Put your proteins of interest in ../../docs/tutorials/protein_names.txt.</p>
+<p><strong>Important</strong>: these proteins should be in ../../docs/tutorials/protein_index_map.csv (6427 proteins in total).</p>
+<div class="nbinput nblast docutils container">
+<div class="prompt highlight-none notranslate"><div class="highlight"><pre><span></span>[5]:
+</pre></div>
+</div>
+<div class="input_area highlight-ipython2 notranslate"><div class="highlight"><pre><span></span><span class="kn">import</span> <span class="nn">scanpy</span> <span class="k">as</span> <span class="nn">sc</span>
+<span class="kn">import</span> <span class="nn">torch</span>
+
+<span class="c1"># only use 10 cells for example</span>
+<span class="n">test_adata</span> <span class="o">=</span> <span class="n">sc</span><span class="o">.</span><span class="n">read_h5ad</span><span class="p">(</span><span class="s2">&quot;../../data/test_sample_rna.h5ad&quot;</span><span class="p">)[:</span><span class="mi">10</span><span class="p">]</span>
+<span class="n">rna_tensor</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">tensor</span><span class="p">(</span><span class="n">test_adata</span><span class="o">.</span><span class="n">X</span><span class="o">.</span><span class="n">todense</span><span class="p">(),</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">float32</span><span class="p">)</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+
+<span class="n">model</span><span class="o">.</span><span class="n">encoder_ckpt_path</span> <span class="o">=</span> <span class="n">ENCODER_CKPT</span>
+<span class="n">model</span><span class="o">.</span><span class="n">decoder_ckpt_path</span> <span class="o">=</span> <span class="n">DECODER_CKPT</span>
+<span class="n">model</span><span class="o">.</span><span class="n">mode</span> <span class="o">=</span> <span class="s2">&quot;RNA-protein&quot;</span>
+<span class="n">model</span><span class="o">.</span><span class="n">eval</span><span class="p">()</span><span class="o">.</span><span class="n">cuda</span><span class="p">()</span>
+
+<span class="k">with</span> <span class="n">torch</span><span class="o">.</span><span class="n">no_grad</span><span class="p">():</span>
+    <span class="n">_</span><span class="p">,</span> <span class="n">_</span><span class="p">,</span> <span class="n">protein_pred</span> <span class="o">=</span> <span class="n">model</span><span class="p">(</span><span class="n">rna_tensor</span><span class="p">)</span>
+
+<span class="c1"># impute given proteins</span>
+<span class="n">target_proteins</span> <span class="o">=</span> <span class="p">[</span><span class="n">line</span><span class="o">.</span><span class="n">strip</span><span class="p">()</span> <span class="k">for</span> <span class="n">line</span> <span class="ow">in</span> <span class="nb">open</span><span class="p">(</span><span class="s2">&quot;../../docs/tutorials/protein_names.txt&quot;</span><span class="p">)]</span>
+
+<span class="kn">import</span> <span class="nn">pandas</span> <span class="k">as</span> <span class="nn">pd</span>
+<span class="n">prot_map</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">read_csv</span><span class="p">(</span><span class="s2">&quot;../../docs/tutorials/protein_index_map.csv&quot;</span><span class="p">)</span>
+<span class="n">name_to_idx</span> <span class="o">=</span> <span class="nb">dict</span><span class="p">(</span><span class="nb">zip</span><span class="p">(</span><span class="n">prot_map</span><span class="p">[</span><span class="s2">&quot;name&quot;</span><span class="p">],</span> <span class="n">prot_map</span><span class="p">[</span><span class="s2">&quot;index&quot;</span><span class="p">]))</span>
+
+<span class="n">idx</span> <span class="o">=</span> <span class="p">[</span><span class="n">name_to_idx</span><span class="p">[</span><span class="n">p</span><span class="p">]</span> <span class="k">for</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">target_proteins</span> <span class="k">if</span> <span class="n">p</span> <span class="ow">in</span> <span class="n">name_to_idx</span><span class="p">]</span>
+
+<span class="n">pred_df</span> <span class="o">=</span> <span class="n">pd</span><span class="o">.</span><span class="n">DataFrame</span><span class="p">(</span>
+    <span class="n">protein_pred</span><span class="p">[:,</span> <span class="n">idx</span><span class="p">]</span><span class="o">.</span><span class="n">cpu</span><span class="p">()</span><span class="o">.</span><span class="n">numpy</span><span class="p">(),</span>
+    <span class="n">columns</span> <span class="o">=</span> <span class="n">target_proteins</span><span class="p">,</span>
+    <span class="n">index</span>   <span class="o">=</span> <span class="n">test_adata</span><span class="o">.</span><span class="n">obs_names</span><span class="p">,</span>
+<span class="p">)</span>
+<span class="n">pred_df</span><span class="o">.</span><span class="n">to_csv</span><span class="p">(</span><span class="n">SAVE_DIR</span><span class="o">/</span><span class="s2">&quot;predicted_protein_expression.csv&quot;</span><span class="p">)</span>
+</pre></div>
+</div>
+</div>
+</section>
+
+
+           </div>
+          </div>
+          <footer>
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>&#169; Copyright 2025, Min Li Lab.</p>
+  </div>
+
+  Built with <a href="https://www.sphinx-doc.org/">Sphinx</a> using a
+    <a href="https://github.com/readthedocs/sphinx_rtd_theme">theme</a>
+    provided by <a href="https://readthedocs.org">Read the Docs</a>.
+   
+
+</footer>
+        </div>
+      </div>
+    </section>
+  </div>
+  <script>
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
